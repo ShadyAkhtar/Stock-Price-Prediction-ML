@@ -16,8 +16,15 @@ pip install scikit-learn
 
 pip install matplotlib
 
+pip install seaborn
 
+pip install flask
 
+pip install dash
+
+pip install dash-bootstrap-components
+
+pip install tweepy
 
 
 
