@@ -12,13 +12,15 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
-from datetime import datetime 
+from datetime import datetime, date 
 from datetime import timedelta
 import urllib3, shutil
 import model
 
+import nsepy as ns
 
 UPLOAD_DIRECTORY = "../datasets/data"
+
 
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
@@ -40,16 +42,15 @@ controls = dbc.Card(
                     id="my-dropdown",
                     options=[
                         # {'label': 'Google', 'value': 'GOOGL'},
-                        # {'label': 'Tata Motors', 'value': 'TATAMOTORS'},
-                        {'label': 'Reliance', 'value': 'RELIANCE'},
-                        {'label': 'Indigo', 'value': 'INDIGO'},
-                        {'label': 'Infosys', 'value': 'INFY'},
-                        {'label': 'IRCTC', 'value': 'IRCTC'},
-                        {'label': 'Aurobindo Pharma', 'value': 'AUROPHARMA'},
+                        {'label': 'Tata Motors', 'value': 'TATAMOTORS BSE'},
+                        {'label': 'Reliance', 'value': 'RELIANCE BSE STOCK'},
+                        {'label': 'PVR', 'value': 'PVR stock'},
+                        {'label': 'Infosys', 'value': 'INFOSYS BSE STOCK'},
+                        {'label': 'Aurobindo Pharma', 'value': 'AUROPHARMA BSE STOCK'},
                         # {'label': 'AT&T Inc.', 'value': 'T'}
             
                     ],
-                    value='RELIANCE',
+                    value='RELIANCE BSE STOCK',
                 ),
                 html.Br(),
                 
@@ -63,7 +64,7 @@ controls = dbc.Card(
 
 app.layout = dbc.Container(
     [
-        html.H1("Stock Recommendation System", style={
+        html.H1("Stock Price Prediction", style={
             'textAlign': 'center'}),
         html.Hr(),
 
@@ -106,6 +107,9 @@ app.layout = dbc.Container(
 )
 
 
+
+
+
 @app.callback(Output('my-graph', 'figure'), [Input('my-dropdown', 'value')])
 def get_data(selected_dropdown_value):
 
@@ -120,16 +124,63 @@ def get_data(selected_dropdown_value):
     end
 
     # # url = 'https://query1.finance.yahoo.com/v7/finance/download/{}?period1={}&period2={}&interval=1d&events=history'.format(selected_dropdown_value,end,start)
-    # url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=BSE:{}&apikey=DFS&outputsize=full&datatype=csv'.format(selected_dropdown_value)
-    # c = urllib3.PoolManager()
-    # filename = "../datasets/data/{}.csv".format(selected_dropdown_value)
+    
+    
+    stock_dict = {
+        "RELIANCE BSE STOCK" : "RELIANCE",
+        "TATAMOTORS BSE": "TATAMOTORS",
+        "INFOSYS BSE STOCK":"INFY",
+        "AUROPHARMA BSE STOCK" : "AUROPHARMA",
+        "PVR stock" : "PVR"
+    }
+    stockselect = stock_dict[selected_dropdown_value]
+    # file_exist = os.path.isfile("../datasets/data/{}.csv".format(selected_dropdown_value))
+    file_exist = os.path.isfile("../datasets/data/{}.csv".format(stockselect))
+    if not file_exist:
+
+        # url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=BSE:{}&apikey=8AU5A5EK4JJELY59&outputsize=full&datatype=csv'.format(stockselect)
+
+        # c = urllib3.PoolManager()
+
+        # filename = "../datasets/data/{}.csv".format(selected_dropdown_value)
+        filename = "../datasets/data/{}.csv".format(stockselect)
+        selected_stock = "{}".format(stockselect)
+        print("Filename", filename)
+        df = ns.get_history(symbol=selected_stock, start = datetime(2005,1,1), end = date.today())
+
+        df["open"] = df["Open"]
+        df["high"] = df["High"]
+        df["low"] = df["Low"]
+        df["close"] = df["Close"]
+        df["adjusted_close"] = df["Prev Close"]
+        df["volume"] = df["Volume"]
+        df.drop("Symbol", axis=1, inplace=True)
+        df.drop("Series", axis=1, inplace=True)
+        df.drop("Open", axis=1, inplace=True)
+        df.drop("High", axis=1, inplace=True)
+        df.drop("Low", axis=1, inplace=True)
+        df.drop("Close", axis=1, inplace=True)
+        df.drop("Prev Close", axis=1, inplace=True)
+        df.drop("Volume", axis=1, inplace=True)
+        df.drop("Trades", axis=1, inplace=True)
+        df.drop("Last", axis=1, inplace=True)
+        df.drop("VWAP", axis=1, inplace=True)
+        df.drop("Turnover", axis=1, inplace=True)
+        df.drop("Deliverable Volume", axis=1, inplace=True)
+        df.drop("%Deliverble", axis=1, inplace=True)
+        
+        print("Dataframe", df)
+        df.to_csv(filename, index = True, header = True)
+
+        # with c.request('GET', url, preload_content=False) as res, open(filename, 'wb') as out_file:
+        #     shutil.copyfileobj(res, out_file)
+
+        # NSEPY for DataSets
 
 
-    # with c.request('GET', url, preload_content=False) as res, open(filename, 'wb') as out_file:
-    #     shutil.copyfileobj(res, out_file)
 
-    data = pd.read_csv("../datasets/data/{}.csv".format(selected_dropdown_value), index_col = "timestamp")
-    data.sort_values(["timestamp"], ascending = True, inplace=True)
+    data = pd.read_csv("../datasets/data/{}.csv".format(stockselect), index_col = "Date")
+    # data.sort_values(["Date"], ascending = True, inplace=True)
     data.index = pd.to_datetime(data.index)
 
 
@@ -206,21 +257,21 @@ def get_data(selected_dropdown_value):
 
 
 
-@app.callback(
-    Output(component_id='my-div', component_property='children'),
-    [Input('my-dropdown', 'value')]
-)
-def sentiment(input_value):
+# @app.callback(
+#     Output(component_id='my-div', component_property='children'),
+#     [Input('my-dropdown', 'value')]
+# )
+# def sentiment(input_value):
 
-    polarity = model.retrieving_tweets_polarity(input_value)
+#     polarity = model.retrieving_tweets_polarity(input_value)
 
-    if polarity > 0:
-        return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a GREAT idea!'.format(str(input_value))
+#     if polarity > 0:
+#         return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a GREAT idea!'.format(str(input_value))
     
-    elif polarity < 0:
-        return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a BAD idea!'.format(str(input_value))
+#     elif polarity < 0:
+#         return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a BAD idea!'.format(str(input_value))
             
-    return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a BAD idea!'.format(str(input_value))
+#     return 'According to the predictions and twitter sentiment analysis -> Investing in "{}" is a BAD idea!'.format(str(input_value))
 
 
 

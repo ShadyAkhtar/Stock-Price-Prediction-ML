@@ -48,8 +48,8 @@ def make_predictions(df):
     # separate 1 percent of the data to forecast
     forecast_out = int(math.ceil(0.01 * len(df)))
 
-    # Separating the label here, we want to predict the AdjClose
-    forecast_col = 'adjusted_close'
+    # Separating the label here, we want to predict the Adjclose
+    forecast_col = 'close'
     df['label'] = df[forecast_col].shift(-forecast_out)
     X = np.array(df.drop(['label'], 1))
 
